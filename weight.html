@@ -21,6 +21,64 @@
         height: auto;
       }
     }
+    #chart .bg {
+      fill: #fff;
+    }
+    #chart .weekend {
+      fill: rgba(0, 0, 0, 0.08);
+    }
+    #chart .grid-v {
+      stroke: #777;
+      stroke-width: 0.06;
+    }
+    #chart .grid-h {
+      stroke: #000;
+    }
+    #chart .grid-h.major {
+      stroke-width: 0.20;
+      stroke-opacity: 0.70;
+    }
+    #chart .grid-h.integer {
+      stroke-width: 0.11;
+      stroke-opacity: 0.45;
+    }
+    #chart .grid-h.minor {
+      stroke-width: 0.06;
+      stroke-opacity: 0.20;
+    }
+    #chart .month-boundary {
+      stroke: #000;
+      stroke-width: 0.3;
+    }
+    #chart .outer-border {
+      fill: none;
+      stroke: #000;
+      stroke-width: 0.25;
+    }
+    #chart .month-label {
+      fill: #000;
+      font-size: 2.2px;
+      font-weight: 700;
+      text-anchor: middle;
+    }
+    #chart .weekday-label {
+      fill: #000;
+      font-size: 0.9px;
+      text-anchor: middle;
+    }
+    #chart .axis-label {
+      fill: #000;
+      font-size: 2.2px;
+      text-anchor: end;
+    }
+    #chart .marker-dot-shape {
+      fill: #000;
+    }
+    #chart .marker-ring-shape {
+      fill: none;
+      stroke: #000;
+      stroke-width: 0.06;
+    }
   </style>
 </head>
 <body>
@@ -41,8 +99,6 @@
       const weekdayHeaderHeight = 4;
       const dayCellWidth = 1;
       const rowCellHeight = 1;
-      const weekdayFontSizePt = 4;
-      const ptToMm = 25.4 / 72;
 
       const months = [];
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
@@ -77,17 +133,17 @@
 
       // Base background
       svg.appendChild(el('rect', {
-        x: 0, y: 0, width: chartWidth, height: chartHeight, fill: '#fff'
+        x: 0, y: 0, width: chartWidth, height: chartHeight, class: 'bg'
       }));
 
       // Reusable marker symbols to reduce output size
       const defs = el('defs');
       const markerDot = el('symbol', { id: 'marker-dot' });
-      markerDot.appendChild(el('circle', { cx: 0, cy: 0, r: 0.23, fill: '#000' }));
+      markerDot.appendChild(el('circle', { cx: 0, cy: 0, r: 0.23, class: 'marker-dot-shape' }));
       defs.appendChild(markerDot);
       const markerRing = el('symbol', { id: 'marker-ring' });
       markerRing.appendChild(el('circle', {
-        cx: 0, cy: 0, r: 0.23, fill: 'none', stroke: '#000', 'stroke-width': 0.06
+        cx: 0, cy: 0, r: 0.23, class: 'marker-ring-shape'
       }));
       defs.appendChild(markerRing);
       svg.appendChild(defs);
@@ -101,7 +157,7 @@
             y: monthHeaderHeight,
             width: dayWidth,
             height: chartHeight - monthHeaderHeight,
-            fill: 'rgba(0,0,0,0.08)'
+            class: 'weekend'
           }));
         }
       }
@@ -113,8 +169,7 @@
           y1: monthHeaderHeight + weekdayHeaderHeight,
           x2: axisWidth + c * dayWidth,
           y2: chartHeight,
-          stroke: '#777',
-          'stroke-width': 0.06
+          class: 'grid-v'
         }));
       }
 
@@ -123,14 +178,13 @@
         const wVal = weightUpper - r * weightStep;
         const isMarker = r % Math.round(5 / weightStep) === 0;
         const isInteger = Number.isInteger(wVal);
+        const rowClass = isMarker ? 'major' : (isInteger ? 'integer' : 'minor');
         svg.appendChild(el('line', {
           x1: axisWidth,
           y1: monthHeaderHeight + weekdayHeaderHeight + r * rowHeight,
           x2: chartWidth,
           y2: monthHeaderHeight + weekdayHeaderHeight + r * rowHeight,
-          stroke: '#000',
-          'stroke-width': isMarker ? 0.20 : (isInteger ? 0.11 : 0.06),
-          'stroke-opacity': isMarker ? 0.70 : (isInteger ? 0.45 : 0.20)
+          class: `grid-h ${rowClass}`
         }));
       }
 
@@ -144,10 +198,7 @@
         svg.appendChild(el('text', {
           x: monthX + monthW / 2,
           y: monthHeaderHeight / 2 + 1.2,
-          'text-anchor': 'middle',
-          'font-size': 3.2,
-          'font-weight': '700',
-          fill: '#000'
+          class: 'month-label'
         })).textContent = m.name;
 
         if (i > 0) {
@@ -156,8 +207,7 @@
             y1: 0,
             x2: monthX,
             y2: chartHeight,
-            stroke: '#000',
-            'stroke-width': 0.3
+            class: 'month-boundary'
           }));
         }
         dayCursor += m.days;
@@ -169,9 +219,7 @@
         svg.appendChild(el('text', {
           x: axisWidth + c * dayWidth + dayWidth / 2,
           y: monthHeaderHeight + (weekdayHeaderHeight / 2) + 0.5,
-          'text-anchor': 'middle',
-          'font-size': (weekdayFontSizePt * ptToMm).toFixed(3),
-          fill: '#000'
+          class: 'weekday-label'
         })).textContent = weekdayNames[idx];
       }
 
@@ -199,9 +247,7 @@
           svg.appendChild(el('text', {
             x: axisWidth - 0.8,
             y: y + 1.0,
-            'text-anchor': 'end',
-            'font-size': 3.0,
-            fill: '#000'
+            class: 'axis-label'
           })).textContent = label;
         }
       }
@@ -212,9 +258,7 @@
         y: monthHeaderHeight + weekdayHeaderHeight,
         width: chartWidth - axisWidth,
         height: bodyHeight,
-        fill: 'none',
-        stroke: '#000',
-        'stroke-width': 0.25
+        class: 'outer-border'
       }));
     })();
   </script>
