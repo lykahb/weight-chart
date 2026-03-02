@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <title>Weight Loss Chart - SVG</title>
   <style>
-    @page { margin: 10mm; }
+    @page {
+      size: letter landscape;
+    }
     html, body {
       margin: 0;
       padding: 0;
@@ -27,57 +29,40 @@
     #chart .weekend {
       fill: rgba(0, 0, 0, 0.08);
     }
-    #chart .grid-v {
-      stroke: #777;
-      stroke-width: 0.06;
-    }
-    #chart .grid-h {
-      stroke: #000;
-    }
-    #chart .grid-h.major {
-      stroke-width: 0.20;
-      stroke-opacity: 0.70;
-    }
-    #chart .grid-h.integer {
-      stroke-width: 0.11;
-      stroke-opacity: 0.45;
-    }
-    #chart .grid-h.minor {
-      stroke-width: 0.06;
-      stroke-opacity: 0.20;
-    }
     #chart .month-boundary {
       stroke: #000;
-      stroke-width: 0.3;
-    }
-    #chart .outer-border {
-      fill: none;
-      stroke: #000;
-      stroke-width: 0.25;
+      stroke-width: 3;
     }
     #chart .month-label {
       fill: #000;
-      font-size: 2.2px;
+      font-size: 20px;
       font-weight: 700;
       text-anchor: middle;
     }
     #chart .weekday-label {
       fill: #000;
-      font-size: 0.9px;
+      font-size: 10px;
+      font-weight: bold;
       text-anchor: middle;
     }
     #chart .axis-label {
       fill: #000;
-      font-size: 2.2px;
+      font-size: 20px;
+      font-weight: bold;
       text-anchor: end;
     }
-    #chart .marker-dot-shape {
-      fill: #000;
-    }
-    #chart .marker-ring-shape {
+    #chart .marker-major-shape {
       fill: none;
       stroke: #000;
-      stroke-width: 0.06;
+      stroke-width: 0.8;
+    }
+    #chart .marker-integer-shape {
+      fill: none;
+      stroke: #000;
+      stroke-width: 0.6;
+    }
+    #chart .marker-fraction-shape {
+      fill: #000;
     }
   </style>
 </head>
@@ -94,11 +79,11 @@
       const weekdayNames = ['S','M','T','W','T','F','S'];
       const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-      const axisWidth = 10;
-      const monthHeaderHeight = 5;
-      const weekdayHeaderHeight = 4;
-      const dayCellWidth = 1;
-      const rowCellHeight = 1;
+      const axisWidth = 50;
+      const monthHeaderHeight = 50;
+      const weekdayHeaderHeight = 40;
+      const dayCellWidth = 10;
+      const rowCellHeight = 7;
 
       const months = [];
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
@@ -138,14 +123,19 @@
 
       // Reusable marker symbols to reduce output size
       const defs = el('defs');
-      const markerDot = el('symbol', { id: 'marker-dot' });
-      markerDot.appendChild(el('circle', { cx: 0, cy: 0, r: 0.23, class: 'marker-dot-shape' }));
-      defs.appendChild(markerDot);
-      const markerRing = el('symbol', { id: 'marker-ring' });
-      markerRing.appendChild(el('circle', {
-        cx: 0, cy: 0, r: 0.23, class: 'marker-ring-shape'
+      const markerMajor = el('g', { id: 'marker-major' });
+      markerMajor.appendChild(el('circle', { cx: 0, cy: 0, r: 3.0, class: 'marker-major-shape' }));
+      defs.appendChild(markerMajor);
+      const markerInteger = el('g', { id: 'marker-integer' });
+      markerInteger.appendChild(el('circle', {
+        cx: 0, cy: 0, r: 2.3, class: 'marker-integer-shape'
       }));
-      defs.appendChild(markerRing);
+      defs.appendChild(markerInteger);
+      const markerFraction = el('g', { id: 'marker-fraction' });
+      markerFraction.appendChild(el('circle', {
+        cx: 0, cy: 0, r: 1.1, class: 'marker-fraction-shape'
+      }));
+      defs.appendChild(markerFraction);
       svg.appendChild(defs);
 
       // Weekend shading (weekday header + body)
@@ -162,32 +152,6 @@
         }
       }
 
-      // Day grid lines
-      for (let c = 0; c <= totalDays; c++) {
-        svg.appendChild(el('line', {
-          x1: axisWidth + c * dayWidth,
-          y1: monthHeaderHeight + weekdayHeaderHeight,
-          x2: axisWidth + c * dayWidth,
-          y2: chartHeight,
-          class: 'grid-v'
-        }));
-      }
-
-      // Horizontal rows
-      for (let r = 0; r <= steps; r++) {
-        const wVal = weightUpper - r * weightStep;
-        const isMarker = r % Math.round(5 / weightStep) === 0;
-        const isInteger = Number.isInteger(wVal);
-        const rowClass = isMarker ? 'major' : (isInteger ? 'integer' : 'minor');
-        svg.appendChild(el('line', {
-          x1: axisWidth,
-          y1: monthHeaderHeight + weekdayHeaderHeight + r * rowHeight,
-          x2: chartWidth,
-          y2: monthHeaderHeight + weekdayHeaderHeight + r * rowHeight,
-          class: `grid-h ${rowClass}`
-        }));
-      }
-
       // Month labels and boundaries
       let dayCursor = 0;
       for (let i = 0; i < months.length; i++) {
@@ -197,7 +161,7 @@
 
         svg.appendChild(el('text', {
           x: monthX + monthW / 2,
-          y: monthHeaderHeight / 2 + 1.2,
+          y: monthHeaderHeight / 2 + 12,
           class: 'month-label'
         })).textContent = m.name;
 
@@ -218,48 +182,38 @@
         const idx = (startDay + c) % 7;
         svg.appendChild(el('text', {
           x: axisWidth + c * dayWidth + dayWidth / 2,
-          y: monthHeaderHeight + (weekdayHeaderHeight / 2) + 0.5,
+          y: monthHeaderHeight + (weekdayHeaderHeight / 2) + 5,
           class: 'weekday-label'
         })).textContent = weekdayNames[idx];
       }
 
       // Marker circles and axis labels
-      const markerRowModulo = Math.round(5 / weightStep);
+      const epsilon = 1e-9;
       for (let r = 0; r <= steps; r++) {
         const wVal = weightUpper - r * weightStep;
-        const isMarker = r % markerRowModulo === 0;
-        const isInteger = Number.isInteger(wVal);
+        const rounded = Math.round(wVal);
+        const isInteger = Math.abs(wVal - rounded) < epsilon;
+        const isMajor = isInteger && (rounded % 5 === 0);
         const y = monthHeaderHeight + weekdayHeaderHeight + r * rowHeight;
 
-        if (isMarker || isInteger) {
-          const href = isMarker ? '#marker-dot' : '#marker-ring';
-          for (let c = 0; c < totalDays; c++) {
-            svg.appendChild(el('use', {
-              href: href,
-              x: axisWidth + c * dayWidth + dayWidth / 2,
-              y: y
-            }));
-          }
+        const href = isMajor ? '#marker-major' : (isInteger ? '#marker-integer' : '#marker-fraction');
+        for (let c = 0; c < totalDays; c++) {
+          svg.appendChild(el('use', {
+            href: href,
+            transform: `translate(${axisWidth + c * dayWidth + dayWidth / 2} ${y})`
+          }));
         }
 
-        if (isMarker) {
-          const label = Number.isInteger(wVal) ? String(wVal) : wVal.toFixed(1);
+        if (isMajor) {
+          const label = isInteger ? String(rounded) : wVal.toFixed(1);
           svg.appendChild(el('text', {
-            x: axisWidth - 0.8,
-            y: y + 1.0,
+            x: axisWidth - 8,
+            y: y + 10,
             class: 'axis-label'
           })).textContent = label;
         }
       }
 
-      // Outer border
-      svg.appendChild(el('rect', {
-        x: axisWidth,
-        y: monthHeaderHeight + weekdayHeaderHeight,
-        width: chartWidth - axisWidth,
-        height: bodyHeight,
-        class: 'outer-border'
-      }));
     })();
   </script>
 </body>
