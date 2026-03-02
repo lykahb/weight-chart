@@ -51,18 +51,19 @@
       font-weight: bold;
       text-anchor: end;
     }
-    #chart .marker-major-shape {
+    #chart .marker-row.major {
       fill: none;
       stroke: #000;
       stroke-width: 0.8;
     }
-    #chart .marker-integer-shape {
+    #chart .marker-row.integer {
       fill: none;
       stroke: #000;
       stroke-width: 0.6;
     }
-    #chart .marker-fraction-shape {
+    #chart .marker-row.fraction {
       fill: #000;
+      stroke: none;
     }
   </style>
 </head>
@@ -121,21 +122,30 @@
         x: 0, y: 0, width: chartWidth, height: chartHeight, class: 'bg'
       }));
 
-      // Reusable marker symbols to reduce output size
+      // Marker templates: one marker per type, reused via <use> in row groups.
+      function markerType(id, radius) {
+        const group = el('g', { id });
+        group.appendChild(el('circle', { cx: 0, cy: 0, r: radius }));
+        return group;
+      }
+      function markerRowGroup(id, markerId) {
+        const group = el('g', { id });
+        for (let c = 0; c < totalDays; c++) {
+          const cx = axisWidth + c * dayWidth + dayWidth / 2;
+          group.appendChild(el('use', {
+            href: markerId,
+            transform: `translate(${cx} 0)`
+          }));
+        }
+        return group;
+      }
       const defs = el('defs');
-      const markerMajor = el('g', { id: 'marker-major' });
-      markerMajor.appendChild(el('circle', { cx: 0, cy: 0, r: 3.0, class: 'marker-major-shape' }));
-      defs.appendChild(markerMajor);
-      const markerInteger = el('g', { id: 'marker-integer' });
-      markerInteger.appendChild(el('circle', {
-        cx: 0, cy: 0, r: 2.3, class: 'marker-integer-shape'
-      }));
-      defs.appendChild(markerInteger);
-      const markerFraction = el('g', { id: 'marker-fraction' });
-      markerFraction.appendChild(el('circle', {
-        cx: 0, cy: 0, r: 1.1, class: 'marker-fraction-shape'
-      }));
-      defs.appendChild(markerFraction);
+      defs.appendChild(markerType('marker-major-type', 3.0));
+      defs.appendChild(markerType('marker-integer-type', 2.3));
+      defs.appendChild(markerType('marker-fraction-type', 1.1));
+      defs.appendChild(markerRowGroup('marker-major-template', '#marker-major-type'));
+      defs.appendChild(markerRowGroup('marker-integer-template', '#marker-integer-type'));
+      defs.appendChild(markerRowGroup('marker-fraction-template', '#marker-fraction-type'));
       svg.appendChild(defs);
 
       // Weekend shading (weekday header + body)
@@ -196,13 +206,13 @@
         const isMajor = isInteger && (rounded % 5 === 0);
         const y = monthHeaderHeight + weekdayHeaderHeight + r * rowHeight;
 
-        const href = isMajor ? '#marker-major' : (isInteger ? '#marker-integer' : '#marker-fraction');
-        for (let c = 0; c < totalDays; c++) {
-          svg.appendChild(el('use', {
-            href: href,
-            transform: `translate(${axisWidth + c * dayWidth + dayWidth / 2} ${y})`
-          }));
-        }
+        const templateId = isMajor ? '#marker-major-template' : (isInteger ? '#marker-integer-template' : '#marker-fraction-template');
+        const markerClass = isMajor ? 'major' : (isInteger ? 'integer' : 'fraction');
+        svg.appendChild(el('use', {
+          href: templateId,
+          transform: `translate(0 ${y})`,
+          class: `marker-row ${markerClass}`
+        }));
 
         if (isMajor) {
           const label = isInteger ? String(rounded) : wVal.toFixed(1);
