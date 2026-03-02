@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weight Loss Chart — Custom Range</title>
+  <style>
+    @page { margin: 10mm; }
+    body { margin: 0; padding: 0; font-family: sans-serif; }
+    table.chart {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    table.chart col.axis { width: 10mm; }
+    table.chart col.day { min-width: 1mm; width: auto; }
+    table.chart th, table.chart td {
+      padding: 0;
+      margin: 0;
+      border: none;
+      text-align: center;
+      font-size: 4pt;
+      line-height: 1mm;
+      height: 1mm;
+    }
+    /* Header adjustments */
+    table.chart th.month { height: 5mm; line-height: 5mm; font-weight: bold; font-size: 12px; }
+    table.chart th.weekday { height: 4mm; line-height: 4mm; }
+    .weekend { background-color: rgba(0,0,0,0.1); }
+    .month-boundary {
+      border-left: 0.3mm solid #000;
+    }
+    /* ensure header th and weekday separators */
+    table.chart th.month-boundary, table.chart th.weekday.month-boundary, table.chart td.month-boundary {
+      border-left: 0.3mm solid #000;
+    }
+    table.chart th.label { text-align: right; padding-right: 2px; font-size: 12px; line-height: 1mm; }
+  </style>
+</head>
+<body>
+  <table class="chart" id="chart"></table>
+  <script>
+    (function() {
+      // Config. The mom
+      const startDate = new Date(2026, 2, 1);
+      const endDate   = new Date(2026, 7, 31);
+      const weightLower = 130, weightUpper = 170, weightStep = 0.2;
+      const weekdayNames = ['S','M','T','W','T','F','S'];
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+      // Build month segments
+      const months = [];
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const y = d.getFullYear(), m = d.getMonth();
+        if (!months.length || months[months.length-1].name !== monthNames[m]) {
+          months.push({ name: monthNames[m], days: 0 });
+        }
+        months[months.length-1].days++;
+      }
+
+      const totalDays = months.reduce((sum, m) => sum + m.days, 0);
+      const startDay = startDate.getDay();
+
+      const table = document.getElementById('chart');
+      const colgroup = document.createElement('colgroup');
+      colgroup.appendChild(Object.assign(document.createElement('col'), { className:'axis' }));
+      for (let i = 0; i < totalDays; i++) colgroup.appendChild(Object.assign(document.createElement('col'), { className:'day' }));
+      table.appendChild(colgroup);
+
+      // Headers
+      const thead = document.createElement('thead');
+      const trM = document.createElement('tr');
+      trM.appendChild(Object.assign(document.createElement('th'), { className:'month label', rowSpan:2 }));
+      months.forEach((m,i) => {
+        const th = document.createElement('th');
+        th.className = 'month' + (i>0?' month-boundary':'');
+        th.colSpan = m.days;
+        th.textContent = m.name;
+        trM.appendChild(th);
+      });
+      thead.appendChild(trM);
+
+      const trW = document.createElement('tr');
+      let dayCount = 0;
+      months.forEach((m,i) => {
+        for (let j = 0; j < m.days; j++, dayCount++) {
+          const idx = (startDay + dayCount)%7;
+          const th = document.createElement('th');
+          th.className = 'weekday' + ((idx===0||idx===6)?' weekend':'') + (j===0&&i>0?' month-boundary':'');
+          th.textContent = weekdayNames[idx];
+          trW.appendChild(th);
+        }
+      });
+      thead.appendChild(trW);
+      table.appendChild(thead);
+
+      // Body rows
+      const tbody = document.createElement('tbody');
+      const steps = Math.round((weightUpper - weightLower)/weightStep);
+      for (let r = 0; r <= steps; r++) {
+        const wVal = weightUpper - r*weightStep;
+        const isMarker = r % Math.round(5/weightStep) === 0;
+        const label = isMarker? (Number.isInteger(wVal)? String(wVal) : wVal.toFixed(1)): '';
+        const tr = document.createElement('tr');
+        tr.appendChild(Object.assign(document.createElement('th'), { className:'label', textContent:label }));
+        for (let c = 0; c < totalDays; c++) {
+          const td = document.createElement('td');
+          const idx = (startDay + c)%7;
+          if (idx===0||idx===6) td.classList.add('weekend');
+          let cum=0;
+          for (const m of months) { cum+=m.days; if(c===cum) td.classList.add('month-boundary'); }
+          let ch='·';
+          if (isMarker) ch = '⊙';
+          else if (Number.isInteger(wVal)) ch = '○';
+          td.textContent = ch;
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+    })();
+  </script>
+</body>
+</html>
