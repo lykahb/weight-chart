@@ -31,7 +31,7 @@
     }
     #chart .month-boundary {
       stroke: #000;
-      stroke-width: 3;
+      stroke-width: 1;
     }
     #chart .month-label {
       fill: #000;
@@ -50,6 +50,8 @@
       font-size: 20px;
       font-weight: bold;
       text-anchor: end;
+      /* Vertically align with the markers */
+      transform: translate(0, 7px);
     }
     #chart .marker-row.major {
       fill: none;
@@ -73,6 +75,17 @@
     (function() {
       const SVG_NS = 'http://www.w3.org/2000/svg';
 
+      function classifyWeightRow(wVal) {
+        const rounded = Math.round(wVal);
+        const epsilon = 1e-9;
+        const isInteger = Math.abs(wVal - rounded) < epsilon;
+        const isMajor = isInteger && (rounded % 5 === 0);
+        const markerClass = isMajor ? 'major' : (isInteger ? 'integer' : 'fraction');
+        const templateId = isMajor ? '#marker-major-template' : (isInteger ? '#marker-integer-template' : '#marker-fraction-template');
+        const axisLabel = isMajor ? String(rounded) : null
+        return { axisLabel, markerClass, templateId };
+      }
+
       // Config
       const startDate = new Date(2026, 2, 1);
       const endDate   = new Date(2026, 7, 31);
@@ -81,8 +94,8 @@
       const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
       const axisWidth = 50;
-      const monthHeaderHeight = 50;
-      const weekdayHeaderHeight = 40;
+      const monthHeaderHeight = 40;
+      const weekdayHeaderHeight = 30;
       const dayCellWidth = 10;
       const rowCellHeight = 7;
 
@@ -141,8 +154,8 @@
       }
       const defs = el('defs');
       defs.appendChild(markerType('marker-major-type', 3.0));
-      defs.appendChild(markerType('marker-integer-type', 2.3));
-      defs.appendChild(markerType('marker-fraction-type', 1.1));
+      defs.appendChild(markerType('marker-integer-type', 2));
+      defs.appendChild(markerType('marker-fraction-type', 0.5));
       defs.appendChild(markerRowGroup('marker-major-template', '#marker-major-type'));
       defs.appendChild(markerRowGroup('marker-integer-template', '#marker-integer-type'));
       defs.appendChild(markerRowGroup('marker-fraction-template', '#marker-fraction-type'));
@@ -171,7 +184,7 @@
 
         svg.appendChild(el('text', {
           x: monthX + monthW / 2,
-          y: monthHeaderHeight / 2 + 12,
+          y: monthHeaderHeight / 2 + 10,
           class: 'month-label'
         })).textContent = m.name;
 
@@ -192,35 +205,29 @@
         const idx = (startDay + c) % 7;
         svg.appendChild(el('text', {
           x: axisWidth + c * dayWidth + dayWidth / 2,
-          y: monthHeaderHeight + (weekdayHeaderHeight / 2) + 5,
+          y: monthHeaderHeight + (weekdayHeaderHeight / 2) + 2,
           class: 'weekday-label'
         })).textContent = weekdayNames[idx];
       }
 
       // Marker circles and axis labels
-      const epsilon = 1e-9;
       for (let r = 0; r <= steps; r++) {
         const wVal = weightUpper - r * weightStep;
-        const rounded = Math.round(wVal);
-        const isInteger = Math.abs(wVal - rounded) < epsilon;
-        const isMajor = isInteger && (rounded % 5 === 0);
+        const { axisLabel, markerClass, templateId } = classifyWeightRow(wVal);
         const y = monthHeaderHeight + weekdayHeaderHeight + r * rowHeight;
 
-        const templateId = isMajor ? '#marker-major-template' : (isInteger ? '#marker-integer-template' : '#marker-fraction-template');
-        const markerClass = isMajor ? 'major' : (isInteger ? 'integer' : 'fraction');
         svg.appendChild(el('use', {
           href: templateId,
           transform: `translate(0 ${y})`,
           class: `marker-row ${markerClass}`
         }));
 
-        if (isMajor) {
-          const label = isInteger ? String(rounded) : wVal.toFixed(1);
+        if (axisLabel) {
           svg.appendChild(el('text', {
             x: axisWidth - 8,
-            y: y + 10,
+            y: y,
             class: 'axis-label'
-          })).textContent = label;
+          })).textContent = axisLabel;
         }
       }
 
