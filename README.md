@@ -1,3 +1,4 @@
-# Printable weight chart
+# Weight chart
 
-Print a weight chart for a given weight and date range. Track weight with the precicion of 1/5 lb.
+Print a weight chart for a given weight and date range. Track weight with the precision of 1/5 lb.
+

@@ -70,172 +70,224 @@
   </style>
 </head>
 <body>
-  <svg id="chart" aria-label="Weight chart" role="img"></svg>
+  <div id="app">
+    <svg
+      id="chart"
+      aria-label="Weight chart"
+      role="img"
+      xmlns="http://www.w3.org/2000/svg"
+      :view-box.camel="viewBox"
+      :preserve-aspect-ratio.camel="'xMinYMin meet'"
+    >
+      <rect class="bg" :x="0" :y="0" :width="chartWidth" :height="chartHeight" />
+
+      <defs>
+        <g id="marker-major-type"><circle :cx="0" :cy="0" :r="3.0" /></g>
+        <g id="marker-integer-type"><circle :cx="0" :cy="0" :r="2.0" /></g>
+        <g id="marker-fraction-type"><circle :cx="0" :cy="0" :r="0.5" /></g>
+
+        <g id="marker-major-template">
+          <use
+            v-for="c in totalDays"
+            :key="`major-${c}`"
+            href="#marker-major-type"
+            :transform="`translate(${axisWidth + (c - 1) * dayWidth + dayWidth / 2} 0)`"
+          />
+        </g>
+        <g id="marker-integer-template">
+          <use
+            v-for="c in totalDays"
+            :key="`integer-${c}`"
+            href="#marker-integer-type"
+            :transform="`translate(${axisWidth + (c - 1) * dayWidth + dayWidth / 2} 0)`"
+          />
+        </g>
+        <g id="marker-fraction-template">
+          <use
+            v-for="c in totalDays"
+            :key="`fraction-${c}`"
+            href="#marker-fraction-type"
+            :transform="`translate(${axisWidth + (c - 1) * dayWidth + dayWidth / 2} 0)`"
+          />
+        </g>
+      </defs>
+
+      <rect
+        v-for="c in weekendColumns"
+        :key="`weekend-${c}`"
+        class="weekend"
+        :x="axisWidth + c * dayWidth"
+        :y="monthHeaderHeight"
+        :width="dayWidth"
+        :height="chartHeight - monthHeaderHeight"
+      />
+
+      <g v-for="(m, i) in monthLayout" :key="`month-${i}`">
+        <text
+          class="month-label"
+          :x="m.x + m.width / 2"
+          :y="monthHeaderHeight / 2 + 10"
+        >{{ m.name }}</text>
+        <line
+          v-if="i > 0"
+          class="month-boundary"
+          :x1="m.x"
+          :y1="0"
+          :x2="m.x"
+          :y2="chartHeight"
+        />
+      </g>
+
+      <text
+        v-for="c in totalDays"
+        :key="`weekday-${c}`"
+        class="weekday-label"
+        :x="axisWidth + (c - 1) * dayWidth + dayWidth / 2"
+        :y="monthHeaderHeight + (weekdayHeaderHeight / 2) + 2"
+      >{{ weekdayNames[(startDay + (c - 1)) % 7] }}</text>
+
+      <g v-for="row in markerRows" :key="`row-${row.r}`">
+        <use
+          :href="row.templateId"
+          :transform="`translate(0 ${row.y})`"
+          :class="`marker-row ${row.markerClass}`"
+        />
+        <text
+          v-if="row.axisLabel !== null"
+          class="axis-label"
+          :x="axisWidth - 8"
+          :y="row.y"
+        >{{ row.axisLabel }}</text>
+      </g>
+    </svg>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script>
-    (function() {
-      const SVG_NS = 'http://www.w3.org/2000/svg';
+    const { createApp } = Vue;
 
-      function classifyWeightRow(wVal) {
-        const rounded = Math.round(wVal);
-        const epsilon = 1e-9;
-        const isInteger = Math.abs(wVal - rounded) < epsilon;
-        const isMajor = isInteger && (rounded % 5 === 0);
-        const markerClass = isMajor ? 'major' : (isInteger ? 'integer' : 'fraction');
-        const templateId = isMajor ? '#marker-major-template' : (isInteger ? '#marker-integer-template' : '#marker-fraction-template');
-        const axisLabel = isMajor ? String(rounded) : null
-        return { axisLabel, markerClass, templateId };
-      }
+    createApp({
+      data() {
+        const startYear = 2026;
+        const startMonth = 3; // 1-12
+        const durationMonths = 6;
+        const weightLower = 130;
+        const weightUpper = 170;
+        const weightStep = 0.2;
+        const weekdayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        const monthNames = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
 
-      // Config
-      const startYear = 2026;
-      const startMonth = 3; // 1-12
-      const durationMonths = 6;
-      const weightLower = 130, weightUpper = 170, weightStep = 0.2;
-      const weekdayNames = ['S','M','T','W','T','F','S'];
-      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const startDate = new Date(startYear, startMonth - 1, 1);
+        const endDate = new Date(startYear, startMonth - 1 + durationMonths, 0);
 
-      const startDate = new Date(startYear, startMonth - 1, 1);
-      const endDate = new Date(startYear, startMonth - 1 + durationMonths, 0);
-
-      const axisWidth = 50;
-      const monthHeaderHeight = 40;
-      const weekdayHeaderHeight = 30;
-      const dayCellWidth = 10;
-      const rowCellHeight = 7;
-
-      const months = [];
-      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const m = d.getMonth();
-        if (!months.length || months[months.length - 1].name !== monthNames[m]) {
-          months.push({ name: monthNames[m], days: 0 });
-        }
-        months[months.length - 1].days++;
-      }
-
-      const totalDays = months.reduce((sum, m) => sum + m.days, 0);
-      const startDay = startDate.getDay();
-      const steps = Math.round((weightUpper - weightLower) / weightStep);
-      const chartWidth = axisWidth + totalDays * dayCellWidth;
-      const bodyHeight = (steps + 1) * rowCellHeight;
-      const chartHeight = monthHeaderHeight + weekdayHeaderHeight + bodyHeight;
-      const dayWidth = (chartWidth - axisWidth) / totalDays;
-      const rowHeight = bodyHeight / (steps + 1);
-
-      function el(name, attrs) {
-        const node = document.createElementNS(SVG_NS, name);
-        if (attrs) {
-          for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
-        }
-        return node;
-      }
-
-      const svg = document.getElementById('chart');
-      svg.setAttribute('xmlns', SVG_NS);
-      svg.setAttribute('viewBox', `0 0 ${chartWidth} ${chartHeight}`);
-      svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
-
-      // Base background
-      svg.appendChild(el('rect', {
-        x: 0, y: 0, width: chartWidth, height: chartHeight, class: 'bg'
-      }));
-
-      // Marker templates: one marker per type, reused via <use> in row groups.
-      function markerType(id, radius) {
-        const group = el('g', { id });
-        group.appendChild(el('circle', { cx: 0, cy: 0, r: radius }));
-        return group;
-      }
-      function markerRowGroup(id, markerId) {
-        const group = el('g', { id });
-        for (let c = 0; c < totalDays; c++) {
-          const cx = axisWidth + c * dayWidth + dayWidth / 2;
-          group.appendChild(el('use', {
-            href: markerId,
-            transform: `translate(${cx} 0)`
+        return {
+          startDate,
+          endDate,
+          weightLower,
+          weightUpper,
+          weightStep,
+          weekdayNames,
+          monthNames,
+          axisWidth: 50,
+          monthHeaderHeight: 40,
+          weekdayHeaderHeight: 30,
+          dayCellWidth: 10,
+          rowCellHeight: 7
+        };
+      },
+      computed: {
+        months() {
+          const monthGroups = [];
+          for (let d = new Date(this.startDate); d <= this.endDate; d.setDate(d.getDate() + 1)) {
+            const monthIndex = d.getMonth();
+            const last = monthGroups[monthGroups.length - 1];
+            if (!last || last.monthIndex !== monthIndex) monthGroups.push({ monthIndex, days: 1 });
+            else last.days += 1;
+          }
+          return monthGroups.map(({ monthIndex, days }) => ({
+            name: this.monthNames[monthIndex],
+            days
           }));
+        },
+        totalDays() {
+          const msPerDay = 24 * 60 * 60 * 1000;
+          return Math.floor((this.endDate - this.startDate) / msPerDay) + 1;
+        },
+        startDay() {
+          return this.startDate.getDay();
+        },
+        steps() {
+          return Math.round((this.weightUpper - this.weightLower) / this.weightStep);
+        },
+        chartWidth() {
+          return this.axisWidth + this.totalDays * this.dayCellWidth;
+        },
+        bodyHeight() {
+          return (this.steps + 1) * this.rowCellHeight;
+        },
+        chartHeight() {
+          return this.monthHeaderHeight + this.weekdayHeaderHeight + this.bodyHeight;
+        },
+        viewBox() {
+          return `0 0 ${this.chartWidth} ${this.chartHeight}`;
+        },
+        dayWidth() {
+          return (this.chartWidth - this.axisWidth) / this.totalDays;
+        },
+        rowHeight() {
+          return this.bodyHeight / (this.steps + 1);
+        },
+        weekendColumns() {
+          const cols = [];
+          for (let c = 0; c < this.totalDays; c++) {
+            const idx = (this.startDay + c) % 7;
+            if (idx === 0 || idx === 6) cols.push(c);
+          }
+          return cols;
+        },
+        monthLayout() {
+          let dayCursor = 0;
+          return this.months.map((m) => {
+            const x = this.axisWidth + dayCursor * this.dayWidth;
+            const width = m.days * this.dayWidth;
+            dayCursor += m.days;
+            return { name: m.name, x, width };
+          });
+        },
+        markerRows() {
+          const rows = [];
+          for (let r = 0; r <= this.steps; r++) {
+            const wVal = this.weightUpper - r * this.weightStep;
+            const { axisLabel, markerClass, templateId } = this.classifyWeightRow(wVal);
+            rows.push({
+              r,
+              y: this.monthHeaderHeight + this.weekdayHeaderHeight + r * this.rowHeight,
+              axisLabel,
+              markerClass,
+              templateId
+            });
+          }
+          return rows;
         }
-        return group;
-      }
-      const defs = el('defs');
-      defs.appendChild(markerType('marker-major-type', 3.0));
-      defs.appendChild(markerType('marker-integer-type', 2));
-      defs.appendChild(markerType('marker-fraction-type', 0.5));
-      defs.appendChild(markerRowGroup('marker-major-template', '#marker-major-type'));
-      defs.appendChild(markerRowGroup('marker-integer-template', '#marker-integer-type'));
-      defs.appendChild(markerRowGroup('marker-fraction-template', '#marker-fraction-type'));
-      svg.appendChild(defs);
-
-      // Weekend shading (weekday header + body)
-      for (let c = 0; c < totalDays; c++) {
-        const idx = (startDay + c) % 7;
-        if (idx === 0 || idx === 6) {
-          svg.appendChild(el('rect', {
-            x: axisWidth + c * dayWidth,
-            y: monthHeaderHeight,
-            width: dayWidth,
-            height: chartHeight - monthHeaderHeight,
-            class: 'weekend'
-          }));
-        }
-      }
-
-      // Month labels and boundaries
-      let dayCursor = 0;
-      for (let i = 0; i < months.length; i++) {
-        const m = months[i];
-        const monthX = axisWidth + dayCursor * dayWidth;
-        const monthW = m.days * dayWidth;
-
-        svg.appendChild(el('text', {
-          x: monthX + monthW / 2,
-          y: monthHeaderHeight / 2 + 10,
-          class: 'month-label'
-        })).textContent = m.name;
-
-        if (i > 0) {
-          svg.appendChild(el('line', {
-            x1: monthX,
-            y1: 0,
-            x2: monthX,
-            y2: chartHeight,
-            class: 'month-boundary'
-          }));
-        }
-        dayCursor += m.days;
-      }
-
-      // Weekday labels
-      for (let c = 0; c < totalDays; c++) {
-        const idx = (startDay + c) % 7;
-        svg.appendChild(el('text', {
-          x: axisWidth + c * dayWidth + dayWidth / 2,
-          y: monthHeaderHeight + (weekdayHeaderHeight / 2) + 2,
-          class: 'weekday-label'
-        })).textContent = weekdayNames[idx];
-      }
-
-      // Marker circles and axis labels
-      for (let r = 0; r <= steps; r++) {
-        const wVal = weightUpper - r * weightStep;
-        const { axisLabel, markerClass, templateId } = classifyWeightRow(wVal);
-        const y = monthHeaderHeight + weekdayHeaderHeight + r * rowHeight;
-
-        svg.appendChild(el('use', {
-          href: templateId,
-          transform: `translate(0 ${y})`,
-          class: `marker-row ${markerClass}`
-        }));
-
-        if (axisLabel) {
-          svg.appendChild(el('text', {
-            x: axisWidth - 8,
-            y: y,
-            class: 'axis-label'
-          })).textContent = axisLabel;
+      },
+      methods: {
+        classifyWeightRow(wVal) {
+          const rounded = Math.round(wVal);
+          const epsilon = 1e-9;
+          const isInteger = Math.abs(wVal - rounded) < epsilon;
+          const isMajor = isInteger && (rounded % 5 === 0);
+          const markerClass = isMajor ? 'major' : (isInteger ? 'integer' : 'fraction');
+          const templateId = isMajor
+            ? '#marker-major-template'
+            : (isInteger ? '#marker-integer-template' : '#marker-fraction-template');
+          const axisLabel = isMajor ? String(rounded) : null;
+          return { axisLabel, markerClass, templateId };
         }
       }
-
-    })();
+    }).mount('#app');
   </script>
 </body>
 </html>
