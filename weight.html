@@ -87,11 +87,15 @@
       }
 
       // Config
-      const startDate = new Date(2026, 2, 1);
-      const endDate   = new Date(2026, 7, 31);
+      const startYear = 2026;
+      const startMonth = 3; // 1-12
+      const durationMonths = 6;
       const weightLower = 130, weightUpper = 170, weightStep = 0.2;
       const weekdayNames = ['S','M','T','W','T','F','S'];
       const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+      const startDate = new Date(startYear, startMonth - 1, 1);
+      const endDate = new Date(startYear, startMonth - 1 + durationMonths, 0);
 
       const axisWidth = 50;
       const monthHeaderHeight = 40;
