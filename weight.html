@@ -6,52 +6,77 @@
   <style>
     @page {
       size: letter landscape;
+      margin: 0.3in;
+    }
+    * {
+      box-sizing: border-box;
     }
     html, body {
       margin: 0;
       padding: 0;
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: Baskerville, 'Times New Roman', serif;
+      color: #171717;
+      background: #fff;
+    }
+    #app {
+      padding: 12px;
+      max-width: 1600px;
+      margin: 0 auto;
     }
     #chart {
       display: block;
       width: 100%;
       margin: 0 auto;
+      height: auto;
+      font-variant-numeric: tabular-nums;
     }
     @media print {
+      #app {
+        padding: 0;
+        max-width: none;
+        break-inside: avoid;
+      }
       #chart {
         width: 100%;
-        height: auto;
+        /* Bound both dimensions to the printable landscape Letter area. */
+        height: 7.9in;
+        max-width: 10.4in;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
       }
     }
     #chart .bg {
       fill: #fff;
     }
     #chart .weekend {
-      fill: rgba(0, 0, 0, 0.08);
+      fill: #ededed;
     }
     #chart .month-boundary {
-      stroke: #000;
-      stroke-width: 1;
+      stroke: #0008;
+      stroke-width: 1.2;
+      /* stroke-dasharray: 3 3; */
     }
     #chart .month-label {
       fill: #000;
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 24px;
+      font-style: normal;
+      letter-spacing: 1px;
       text-anchor: middle;
     }
     #chart .weekday-label {
-      fill: #000;
+      fill: #333;
+      font-family: Arial, Helvetica, sans-serif;
       font-size: 10px;
       font-weight: bold;
       text-anchor: middle;
     }
     #chart .axis-label {
       fill: #000;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: bold;
       text-anchor: end;
       /* Vertically align with the markers */
-      transform: translate(0, 7px);
+      transform: translate(0, 6px);
     }
     #chart .marker-row.major {
       fill: none;
@@ -132,7 +157,7 @@
           v-if="i > 0"
           class="month-boundary"
           :x1="m.x"
-          :y1="0"
+          :y1="monthHeaderHeight"
           :x2="m.x"
           :y2="chartHeight"
         />
