@@ -1,0 +1,10 @@
+# macOS and editor leftovers
+.DS_Store
+._*
+*.swp
+*.swo
+*~
+
+# Local dependencies and generated printouts
+node_modules/
+*.pdf
